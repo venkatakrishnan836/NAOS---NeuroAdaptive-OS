@@ -1,0 +1,2522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NAOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════════════════════════
+   CSS VARIABLES — three EEG-reactive themes
+   ══════════════════════════════════════════════════════════ */
+:root {
+  /* NEUTRAL theme (default) */
+  --bg:        #070d1a;
+  --bg2:       #0c1526;
+  --bg3:       #111f38;
+  --surface:   #162444;
+  --border:    #1e3355;
+  --accent:    #3de8ff;
+  --accent2:   #1aafcc;
+  --accent3:   #00ff99;
+  --text:      #d0e8ff;
+  --text-dim:  #3a6080;
+  --text-mute: #1e3a55;
+  --red:       #ff3366;
+  --amber:     #ffaa00;
+  --green:     #00ff99;
+  --font-ui:   13px;
+  --radius:    10px;
+  --trans:     all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  --trans-fast:all 0.18s ease;
+  --glow:      0 0 20px rgba(61,232,255,0.18);
+  --glow-lg:   0 0 40px rgba(61,232,255,0.12);
+}
+
+body.theme-high-contrast {
+  --bg:        #000000;
+  --bg2:       #080808;
+  --bg3:       #101010;
+  --surface:   #181818;
+  --border:    #2a2a2a;
+  --accent:    #ffffff;
+  --accent2:   #aaaaaa;
+  --accent3:   #ffffff;
+  --text:      #ffffff;
+  --text-dim:  #666666;
+  --text-mute: #333333;
+  --font-ui:   15px;
+  --glow:      0 0 20px rgba(255,255,255,0.12);
+  --glow-lg:   0 0 40px rgba(255,255,255,0.08);
+}
+
+body.theme-warm-dim {
+  --bg:        #0a0600;
+  --bg2:       #130c00;
+  --bg3:       #1c1200;
+  --surface:   #261900;
+  --border:    #342000;
+  --accent:    #ff8844;
+  --accent2:   #cc5500;
+  --accent3:   #ffcc44;
+  --text:      #ffe5bb;
+  --text-dim:  #664422;
+  --text-mute: #3a1f00;
+  --font-ui:   12px;
+  --glow:      0 0 20px rgba(255,136,68,0.15);
+  --glow-lg:   0 0 40px rgba(255,136,68,0.08);
+}
+
+/* ══════════════════════════════════════════════════════════
+   RESET + BASE
+   ══════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: var(--font-ui);
+  transition: var(--trans);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+}
+
+/* Subtle grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--text-mute) 1px, transparent 1px),
+    linear-gradient(90deg, var(--text-mute) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.18;
+  pointer-events: none;
+  z-index: 0;
+  transition: var(--trans);
+}
+
+/* ══════════════════════════════════════════════════════════
+   TOP BAR
+   ══════════════════════════════════════════════════════════ */
+#topbar {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 20px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  transition: var(--trans);
+}
+
+.tb-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 4px;
+  color: var(--accent);
+  text-shadow: var(--glow);
+  transition: var(--trans);
+  cursor: default;
+  user-select: none;
+}
+
+#home-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: var(--trans-fast);
+}
+#home-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tb-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+/* Neural state pills in topbar */
+.state-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.pill-label {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.pill-bar {
+  width: 40px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.pill-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.35s ease;
+}
+.pill-fill.attention { background: var(--accent3); }
+.pill-fill.load      { background: var(--accent); }
+.pill-fill.tension   { background: var(--red); }
+.pill-fill.drowsy    { background: var(--amber); }
+
+.ws-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ws-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-mute);
+  transition: background 0.3s;
+}
+.ws-dot.live    { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.ws-dot.stale   { background: var(--amber); }
+.ws-dot.error   { background: var(--red); }
+
+#clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+/* EEG theme badge */
+#theme-badge {
+  font-size: 9px;
+  letter-spacing: 2px;
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--accent);
+  transition: var(--trans);
+}
+
+/* ══════════════════════════════════════════════════════════
+   MAIN CONTENT AREA
+   ══════════════════════════════════════════════════════════ */
+#content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  overflow: hidden;
+  display: grid;
+  grid-template-areas: "main sidebar";
+  grid-template-columns: 1fr 260px;
+}
+
+/* Sidebar — always visible */
+#sidebar {
+  grid-area: sidebar;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg2);
+  overflow: hidden;
+  transition: var(--trans);
+}
+
+#sidebar-inner {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#sidebar-inner::-webkit-scrollbar { width: 3px; }
+#sidebar-inner::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.sidebar-section { display: flex; flex-direction: column; gap: 8px; }
+.sidebar-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--text-mute);
+  text-transform: uppercase;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+}
+
+/* State bars in sidebar */
+.state-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.state-bar-name {
+  width: 68px;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.state-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg3);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.state-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+  min-width: 2px;
+}
+.sbf-attention { background: var(--accent3); }
+.sbf-load      {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+.sbf-tension   { background: var(--red); }
+.sbf-drowsy    { background: var(--amber); }
+
+.state-bar-val {
+  width: 28px;
+  font-size: 9px;
+  color: var(--text-dim);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Confidence bar */
+.conf-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.conf-track {
+  height: 4px;
+  background: var(--bg3);
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.conf-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.5;
+  transition: width 0.4s ease;
+}
+
+/* Warmup banner in sidebar */
+#warmup-row {
+  font-size: 10px;
+  color: var(--amber);
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pulse-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: pulse 1s infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Events log in sidebar */
+#events-log {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.event-chip {
+  padding: 5px 8px;
+  background: var(--bg3);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+  animation: slideIn 0.25s ease;
+}
+.event-chip.alert { border-color: var(--red); color: var(--red); }
+.event-chip.warn  { border-color: var(--amber); color: var(--amber); }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* AI bubble in sidebar */
+#llm-area {
+  padding: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  min-height: 48px;
+  transition: var(--trans);
+  position: relative;
+}
+#llm-area.has-message {
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: var(--glow);
+}
+#llm-tag {
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  margin-bottom: 5px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+}
+#llm-text { font-style: italic; }
+
+/* LLM trigger button */
+#llm-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 7px;
+  border-radius: 5px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%;
+  transition: var(--trans-fast);
+}
+#llm-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(61,232,255,0.05);
+}
+
+/* ══════════════════════════════════════════════════════════
+   MAIN AREA — holds screens
+   ══════════════════════════════════════════════════════════ */
+#main-area {
+  grid-area: main;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Generic screen */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.97);
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+.screen.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: scale(1);
+}
+
+/* ── LAUNCHER screen ───────────────────────────── */
+#screen-launcher {
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 40px;
+}
+
+.launcher-greeting {
+  text-align: center;
+}
+.launcher-heading {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 38px;
+  letter-spacing: 6px;
+  color: var(--accent);
+  text-shadow: var(--glow-lg);
+  transition: var(--trans);
+  line-height: 1;
+}
+.launcher-sub {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--text-dim);
+  margin-top: 10px;
+  text-transform: uppercase;
+  transition: var(--trans);
+}
+
+/* EEG adaptation notice */
+#adaptation-notice {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--text-mute);
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: var(--trans);
+  text-align: center;
+}
+#adaptation-notice.active-notice {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(61,232,255,0.04);
+  box-shadow: var(--glow);
+}
+
+/* App grid */
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  max-width: 660px;
+  width: 100%;
+}
+
+.app-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 20px;
+  cursor: pointer;
+  transition: var(--trans-fast);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.app-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  background: radial-gradient(circle at top left, var(--accent) 0%, transparent 70%);
+}
+
+.app-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: var(--glow-lg);
+}
+.app-card:hover::after { opacity: 0.06; }
+.app-card:active { transform: translateY(0); }
+
+.app-icon {
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+.app-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--text);
+  transition: var(--trans);
+}
+
+.app-desc {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  transition: var(--trans);
+}
+
+.app-tag {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--bg3);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  text-transform: uppercase;
+  margin-top: auto;
+  transition: var(--trans);
+}
+
+/* ── APP screens shared chrome ─────────────────── */
+.app-chrome {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg2);
+  flex-shrink: 0;
+  transition: var(--trans);
+}
+.app-chrome-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.app-chrome-icon { font-size: 18px; }
+.app-chrome-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  transition: var(--trans);
+}
+.app-chrome-sub {
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+.back-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: var(--trans-fast);
+}
+.back-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* adaptation tag inside app */
+.adapt-tag {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  transition: var(--trans);
+  border: 1px solid var(--border);
+  color: var(--text-mute);
+}
+.adapt-tag.changed {
+  border-color: var(--accent);
+  color: var(--accent);
+  animation: flash 1.5s ease;
+}
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   APP: FOCUS TIMER
+   ══════════════════════════════════════════════════════════ */
+#screen-focus {
+  overflow: hidden;
+}
+
+#focus-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 32px;
+  padding: 32px;
+  transition: var(--trans);
+}
+
+.timer-ring-wrap {
+  position: relative;
+  width: 220px;
+  height: 220px;
+}
+.timer-ring-svg {
+  width: 220px;
+  height: 220px;
+  transform: rotate(-90deg);
+}
+.timer-ring-bg {
+  fill: none;
+  stroke: var(--bg3);
+  stroke-width: 8;
+}
+.timer-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke var(--trans);
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+.timer-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+#timer-display {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 48px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  text-shadow: var(--glow);
+  font-variant-numeric: tabular-nums;
+  transition: var(--trans);
+}
+#timer-phase {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.timer-controls {
+  display: flex;
+  gap: 12px;
+}
+.timer-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 24px;
+  border-radius: 7px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: var(--trans-fast);
+  text-transform: uppercase;
+}
+.timer-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(61,232,255,0.06);
+}
+.timer-btn.primary {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+.timer-btn.primary:hover {
+  background: var(--accent2);
+  color: var(--bg);
+}
+
+/* EEG-adaptive hint for focus */
+#focus-eeg-hint {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: var(--trans);
+  text-align: center;
+  max-width: 340px;
+}
+#focus-eeg-hint.urgent {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(255,170,0,0.05);
+}
+#focus-eeg-hint.drowsy-warn {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ══════════════════════════════════════════════════════════
+   APP: NOTES
+   ══════════════════════════════════════════════════════════ */
+#screen-notes {
+  overflow: hidden;
+}
+#notes-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+#notes-list {
+  width: 200px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: var(--bg2);
+  transition: var(--trans);
+}
+#notes-list::-webkit-scrollbar { width: 3px; }
+#notes-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+.note-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: var(--trans-fast);
+}
+.note-item:hover, .note-item.active {
+  background: var(--bg3);
+  border-left: 2px solid var(--accent);
+  padding-left: 12px;
+}
+.note-item-title {
+  font-size: 11px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.note-item-preview {
+  font-size: 9px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#new-note-btn {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--accent);
+  padding: 10px 14px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  cursor: pointer;
+  text-align: left;
+  letter-spacing: 1px;
+  transition: var(--trans-fast);
+}
+#new-note-btn:hover { background: var(--bg3); }
+
+#notes-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#note-title-input {
+  width: 100%;
+  background: var(--bg2);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  padding: 16px 20px;
+  outline: none;
+  letter-spacing: 1px;
+  transition: var(--trans);
+}
+#note-title-input::placeholder { color: var(--text-mute); }
+#note-title-input:focus { background: var(--bg3); }
+
+#note-body-input {
+  flex: 1;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  line-height: 1.8;
+  padding: 18px 20px;
+  outline: none;
+  resize: none;
+  transition: color var(--trans), background var(--trans);
+}
+#note-body-input::placeholder { color: var(--text-mute); }
+
+/* notes EEG adaptation: font size changes */
+body.theme-high-contrast #note-body-input { font-size: 14px; }
+body.theme-warm-dim #note-body-input { font-size: 11px; }
+
+#notes-status {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--text-mute);
+  padding: 8px 20px;
+  border-top: 1px solid var(--border);
+  transition: var(--trans);
+}
+
+/* ══════════════════════════════════════════════════════════
+   APP: AMBIENT (Ambient Soundscape)
+   ══════════════════════════════════════════════════════════ */
+#screen-ambient {
+  overflow: hidden;
+}
+#ambient-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 32px;
+}
+
+.sound-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  max-width: 600px;
+  width: 100%;
+}
+
+.sound-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 14px;
+  cursor: pointer;
+  transition: var(--trans-fast);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+.sound-card::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 0;
+  background: linear-gradient(to top, var(--accent), transparent);
+  opacity: 0.1;
+  transition: height 0.3s ease;
+}
+.sound-card.playing { border-color: var(--accent); }
+.sound-card.playing::before { height: 100%; }
+.sound-card:hover { border-color: var(--accent2); transform: translateY(-2px); }
+
+.sound-emoji { font-size: 26px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4)); }
+.sound-name {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.sound-playing-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.2s infinite;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.sound-card.playing .sound-playing-dot { opacity: 1; }
+
+#ambient-eeg-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-align: center;
+  transition: var(--trans);
+}
+
+/* Volume slider */
+.vol-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 340px;
+}
+.vol-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  width: 48px;
+  text-transform: uppercase;
+}
+input[type=range] {
+  -webkit-appearance: none;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg3);
+  outline: none;
+  cursor: pointer;
+  transition: var(--trans);
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  transition: var(--trans);
+  box-shadow: var(--glow);
+}
+
+/* ══════════════════════════════════════════════════════════
+   APP: TASK BOARD
+   ══════════════════════════════════════════════════════════ */
+#screen-tasks {
+  overflow: hidden;
+}
+#tasks-body {
+  flex: 1;
+  display: flex;
+  gap: 0;
+  overflow: hidden;
+}
+
+.task-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+.task-col:last-child { border-right: none; }
+
+.task-col-header {
+  padding: 12px 14px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: var(--trans);
+}
+.task-count {
+  font-size: 9px;
+  padding: 1px 7px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0;
+  font-family: 'Space Mono', monospace;
+}
+
+.task-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.task-list::-webkit-scrollbar { width: 3px; }
+.task-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+.task-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: var(--trans-fast);
+  user-select: none;
+}
+.task-card:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.task-title {
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 5px;
+}
+.task-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.task-tag {
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.task-tag.high { border-color: var(--red); color: var(--red); }
+.task-tag.med  { border-color: var(--amber); color: var(--amber); }
+.task-tag.low  { border-color: var(--accent3); color: var(--accent3); }
+
+.add-task-btn {
+  background: none;
+  border: 1px dashed var(--border);
+  color: var(--text-mute);
+  padding: 8px;
+  border-radius: 7px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: var(--trans-fast);
+  width: 100%;
+  margin-top: 2px;
+}
+.add-task-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* EEG adaptation in task board: high load → dims done col */
+body.theme-high-contrast .task-col:last-child { opacity: 0.4; }
+
+/* ══════════════════════════════════════════════════════════
+   APP: MUSIC PLAYER
+   ══════════════════════════════════════════════════════════ */
+#screen-music {
+  overflow: hidden;
+}
+#music-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 32px;
+}
+
+.album-art {
+  width: 160px;
+  height: 160px;
+  border-radius: 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60px;
+  transition: var(--trans);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  animation: album-idle 8s ease-in-out infinite;
+}
+@keyframes album-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.track-info { text-align: center; }
+.track-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: var(--text);
+  margin-bottom: 4px;
+  transition: var(--trans);
+}
+.track-artist {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+/* Progress bar */
+.progress-row {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.progress-track {
+  width: 100%;
+  height: 4px;
+  background: var(--bg3);
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent3));
+  border-radius: 2px;
+  width: 0%;
+  transition: width 1s linear;
+}
+.progress-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.music-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.music-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--trans-fast);
+}
+.music-btn:hover { border-color: var(--accent); color: var(--accent); }
+.music-btn.play-btn {
+  width: 52px; height: 52px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-size: 20px;
+}
+.music-btn.play-btn:hover { background: var(--accent2); border-color: var(--accent2); }
+
+#music-eeg-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: var(--trans);
+}
+#music-eeg-label.changed {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ══════════════════════════════════════════════════════════
+   OVERLAYS
+   ══════════════════════════════════════════════════════════ */
+
+/* Drowsiness banner */
+#drowsy-banner {
+  position: fixed;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: rgba(255,170,0,0.12);
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--amber);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+#drowsy-banner.visible {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(-50%) translateY(0);
+}
+#drowsy-dismiss {
+  background: none;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+#drowsy-dismiss:hover { background: rgba(255,170,0,0.15); }
+
+/* Emergency overlay */
+#emergency-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+#emergency-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+.emerg-card {
+  background: #0d0000;
+  border: 2px solid var(--red);
+  border-radius: 14px;
+  padding: 40px 48px;
+  text-align: center;
+  max-width: 420px;
+  box-shadow: 0 0 80px rgba(255,51,102,0.3);
+}
+.emerg-icon { font-size: 48px; margin-bottom: 16px; }
+.emerg-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: 4px;
+  color: var(--red);
+  margin-bottom: 10px;
+}
+.emerg-sub {
+  font-size: 11px;
+  color: #aa4455;
+  letter-spacing: 1px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+.emerg-countdown {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 48px;
+  color: var(--red);
+  margin-bottom: 24px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 20px rgba(255,51,102,0.6);
+}
+.emerg-btns { display: flex; gap: 14px; justify-content: center; }
+.emerg-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  border: none;
+  transition: var(--trans-fast);
+}
+.emerg-btn.ok {
+  background: var(--bg3);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.emerg-btn.ok:hover { background: var(--bg2); }
+.emerg-btn.call {
+  background: var(--red);
+  color: white;
+}
+.emerg-btn.call:hover { background: #cc1133; }
+
+/* Emergency step indicator */
+#emerg-step {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,51,102,0.12);
+  border: 1px solid var(--red);
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--red);
+  z-index: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+#emerg-step.visible { opacity: 1; }
+
+/* ══════════════════════════════════════════════════════════
+   WARMUP OVERLAY
+   ══════════════════════════════════════════════════════════ */
+#warmup-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+  transition: opacity 0.6s ease;
+}
+#warmup-overlay.fade { opacity: 0; pointer-events: none; }
+
+.wu-logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 48px;
+  letter-spacing: 8px;
+  color: var(--accent);
+  text-shadow: var(--glow-lg);
+}
+.wu-sub {
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.wu-bar-wrap {
+  width: 260px;
+  height: 3px;
+  background: var(--bg3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.wu-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+.wu-hint {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text-mute);
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ WARMUP OVERLAY ══════════════════ -->
+<div id="warmup-overlay">
+  <div class="wu-logo">NAOS</div>
+  <div class="wu-sub">Calibrating Neural Baseline</div>
+  <div class="wu-bar-wrap"><div class="wu-bar-fill" id="wu-bar"></div></div>
+  <div class="wu-hint" id="wu-hint">Connecting to server…</div>
+</div>
+
+<!-- ══════════════════ TOP BAR ══════════════════ -->
+<div id="topbar">
+  <div class="tb-left">
+    <div class="logo">MIND·OS</div>
+    <button id="home-btn" onclick="navigate('launcher')">⊞ LAUNCHER</button>
+  </div>
+  <div class="tb-right">
+    <div class="state-pill">
+      <span class="pill-label">ATTN</span>
+      <div class="pill-bar"><div class="pill-fill attention" id="pill-attn" style="width:50%"></div></div>
+    </div>
+    <div class="state-pill">
+      <span class="pill-label">LOAD</span>
+      <div class="pill-bar"><div class="pill-fill load" id="pill-load" style="width:50%"></div></div>
+    </div>
+    <div class="state-pill">
+      <span class="pill-label">TENS</span>
+      <div class="pill-bar"><div class="pill-fill tension" id="pill-tens" style="width:50%"></div></div>
+    </div>
+    <div class="state-pill">
+      <span class="pill-label">DRWS</span>
+      <div class="pill-bar"><div class="pill-fill drowsy" id="pill-drws" style="width:50%"></div></div>
+    </div>
+    <div id="theme-badge">NEUTRAL</div>
+    <div class="ws-indicator">
+      <div class="ws-dot" id="ws-dot"></div>
+      <span id="ws-label">—</span>
+    </div>
+    <div id="clock">—</div>
+  </div>
+</div>
+
+<!-- ══════════════════ CONTENT ══════════════════ -->
+<div id="content">
+
+  <!-- ── MAIN AREA ── -->
+  <div id="main-area">
+
+    <!-- LAUNCHER -->
+    <div class="screen active" id="screen-launcher">
+      <div class="launcher-greeting">
+        <div class="launcher-heading">MIND·OS</div>
+        <div class="launcher-sub">Adaptive Brain-Computer Interface</div>
+      </div>
+      <div id="adaptation-notice">EEG CALIBRATING — Neural adaptation will activate shortly</div>
+      <div class="app-grid">
+        <div class="app-card" onclick="navigate('focus')">
+          <div class="app-icon">⏱</div>
+          <div class="app-name">Focus Timer</div>
+          <div class="app-desc">Pomodoro timer that adapts session length based on your cognitive load and drowsiness state.</div>
+          <div class="app-tag">EEG-ADAPTIVE</div>
+        </div>
+        <div class="app-card" onclick="navigate('notes')">
+          <div class="app-icon">📝</div>
+          <div class="app-name">Notes</div>
+          <div class="app-desc">Markdown notepad. Text size and contrast auto-adjust based on your attention and load.</div>
+          <div class="app-tag">EEG-ADAPTIVE</div>
+        </div>
+        <div class="app-card" onclick="navigate('ambient')">
+          <div class="app-icon">🎧</div>
+          <div class="app-name">Ambient</div>
+          <div class="app-desc">Soundscape player. Recommends sounds based on your current neural state.</div>
+          <div class="app-tag">EEG-ADAPTIVE</div>
+        </div>
+        <div class="app-card" onclick="navigate('tasks')">
+          <div class="app-icon">📋</div>
+          <div class="app-name">Task Board</div>
+          <div class="app-desc">Kanban board. Prioritizes and dims columns based on cognitive load.</div>
+          <div class="app-tag">EEG-ADAPTIVE</div>
+        </div>
+        <div class="app-card" onclick="navigate('music')">
+          <div class="app-icon">🎵</div>
+          <div class="app-name">Music</div>
+          <div class="app-desc">Music player. BPM and genre suggestions shift based on arousal and drowsiness.</div>
+          <div class="app-tag">EEG-ADAPTIVE</div>
+        </div>
+        <div class="app-card" style="opacity:0.35; cursor:default;">
+          <div class="app-icon">🔬</div>
+          <div class="app-name">Neural Lab</div>
+          <div class="app-desc">Advanced EEG analytics. Coming in next build.</div>
+          <div class="app-tag">COMING SOON</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOCUS TIMER APP -->
+    <div class="screen" id="screen-focus">
+      <div class="app-chrome">
+        <div class="app-chrome-left">
+          <div class="app-chrome-icon">⏱</div>
+          <div>
+            <div class="app-chrome-title">Focus Timer</div>
+            <div class="app-chrome-sub">EEG-ADAPTIVE POMODORO</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="adapt-tag" id="focus-adapt-tag">WAITING FOR SIGNAL</div>
+          <button class="back-btn" onclick="navigate('launcher')">← HOME</button>
+        </div>
+      </div>
+      <div id="focus-body">
+        <div class="timer-ring-wrap">
+          <svg class="timer-ring-svg" viewBox="0 0 220 220">
+            <circle class="timer-ring-bg" cx="110" cy="110" r="96"/>
+            <circle class="timer-ring-fill" id="timer-ring" cx="110" cy="110" r="96"
+              stroke-dasharray="603" stroke-dashoffset="0"/>
+          </svg>
+          <div class="timer-center">
+            <div id="timer-display">25:00</div>
+            <div id="timer-phase">FOCUS</div>
+          </div>
+        </div>
+        <div class="timer-controls">
+          <button class="timer-btn" onclick="timerReset()">RESET</button>
+          <button class="timer-btn primary" id="timer-start-btn" onclick="timerToggle()">START</button>
+          <button class="timer-btn" onclick="timerSkip()">SKIP</button>
+        </div>
+        <div id="focus-eeg-hint">Neural signal initialising…</div>
+      </div>
+    </div>
+
+    <!-- NOTES APP -->
+    <div class="screen" id="screen-notes">
+      <div class="app-chrome">
+        <div class="app-chrome-left">
+          <div class="app-chrome-icon">📝</div>
+          <div>
+            <div class="app-chrome-title">Notes</div>
+            <div class="app-chrome-sub">EEG-ADAPTIVE EDITOR</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="adapt-tag" id="notes-adapt-tag">WAITING FOR SIGNAL</div>
+          <button class="back-btn" onclick="navigate('launcher')">← HOME</button>
+        </div>
+      </div>
+      <div id="notes-body">
+        <div id="notes-list">
+          <button id="new-note-btn" onclick="newNote()">+ NEW NOTE</button>
+        </div>
+        <div id="notes-editor">
+          <input id="note-title-input" type="text" placeholder="Note title…" oninput="saveNote()">
+          <textarea id="note-body-input" placeholder="Start writing… Font size adapts to your cognitive state." oninput="saveNote()"></textarea>
+          <div id="notes-status">EEG: adaptation active — font size reflects cognitive load</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AMBIENT APP -->
+    <div class="screen" id="screen-ambient">
+      <div class="app-chrome">
+        <div class="app-chrome-left">
+          <div class="app-chrome-icon">🎧</div>
+          <div>
+            <div class="app-chrome-title">Ambient</div>
+            <div class="app-chrome-sub">NEURAL-TUNED SOUNDSCAPES</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="adapt-tag" id="ambient-adapt-tag">WAITING FOR SIGNAL</div>
+          <button class="back-btn" onclick="navigate('launcher')">← HOME</button>
+        </div>
+      </div>
+      <div id="ambient-body">
+        <div id="ambient-eeg-label">— Detecting neural state —</div>
+        <div class="sound-grid" id="sound-grid">
+          <div class="sound-card" data-sound="rain" onclick="toggleSound('rain')">
+            <div class="sound-emoji">🌧</div>
+            <div class="sound-name">Rain</div>
+            <div class="sound-playing-dot"></div>
+          </div>
+          <div class="sound-card" data-sound="forest" onclick="toggleSound('forest')">
+            <div class="sound-emoji">🌲</div>
+            <div class="sound-name">Forest</div>
+            <div class="sound-playing-dot"></div>
+          </div>
+          <div class="sound-card" data-sound="ocean" onclick="toggleSound('ocean')">
+            <div class="sound-emoji">🌊</div>
+            <div class="sound-name">Ocean</div>
+            <div class="sound-playing-dot"></div>
+          </div>
+          <div class="sound-card" data-sound="fire" onclick="toggleSound('fire')">
+            <div class="sound-emoji">🔥</div>
+            <div class="sound-name">Fireplace</div>
+            <div class="sound-playing-dot"></div>
+          </div>
+          <div class="sound-card" data-sound="whitenoise" onclick="toggleSound('whitenoise')">
+            <div class="sound-emoji">📡</div>
+            <div class="sound-name">White Noise</div>
+            <div class="sound-playing-dot"></div>
+          </div>
+          <div class="sound-card" data-sound="cafe" onclick="toggleSound('cafe')">
+            <div class="sound-emoji">☕</div>
+            <div class="sound-name">Café</div>
+            <div class="sound-playing-dot"></div>
+          </div>
+          <div class="sound-card" data-sound="thunder" onclick="toggleSound('thunder')">
+            <div class="sound-emoji">⛈</div>
+            <div class="sound-name">Thunder</div>
+            <div class="sound-playing-dot"></div>
+          </div>
+          <div class="sound-card" data-sound="space" onclick="toggleSound('space')">
+            <div class="sound-emoji">🌌</div>
+            <div class="sound-name">Space</div>
+            <div class="sound-playing-dot"></div>
+          </div>
+        </div>
+        <div class="vol-row">
+          <span class="vol-label">VOLUME</span>
+          <input type="range" id="vol-slider" min="0" max="100" value="60">
+          <span style="font-size:9px;color:var(--text-dim);width:30px;text-align:right;" id="vol-val">60%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TASKS APP -->
+    <div class="screen" id="screen-tasks">
+      <div class="app-chrome">
+        <div class="app-chrome-left">
+          <div class="app-chrome-icon">📋</div>
+          <div>
+            <div class="app-chrome-title">Task Board</div>
+            <div class="app-chrome-sub">EEG-ADAPTIVE KANBAN</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="adapt-tag" id="tasks-adapt-tag">WAITING FOR SIGNAL</div>
+          <button class="back-btn" onclick="navigate('launcher')">← HOME</button>
+        </div>
+      </div>
+      <div id="tasks-body">
+        <div class="task-col" id="col-todo">
+          <div class="task-col-header">
+            TODO <span class="task-count" id="count-todo">0</span>
+          </div>
+          <div class="task-list" id="list-todo"></div>
+          <div style="padding:6px 10px;">
+            <button class="add-task-btn" onclick="addTask('todo')">+ ADD TASK</button>
+          </div>
+        </div>
+        <div class="task-col" id="col-doing">
+          <div class="task-col-header" style="color:var(--amber)">
+            IN PROGRESS <span class="task-count" id="count-doing">0</span>
+          </div>
+          <div class="task-list" id="list-doing"></div>
+          <div style="padding:6px 10px;">
+            <button class="add-task-btn" onclick="addTask('doing')">+ ADD TASK</button>
+          </div>
+        </div>
+        <div class="task-col" id="col-done">
+          <div class="task-col-header" style="color:var(--accent3)">
+            DONE <span class="task-count" id="count-done">0</span>
+          </div>
+          <div class="task-list" id="list-done"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MUSIC APP -->
+    <div class="screen" id="screen-music">
+      <div class="app-chrome">
+        <div class="app-chrome-left">
+          <div class="app-chrome-icon">🎵</div>
+          <div>
+            <div class="app-chrome-title">Music</div>
+            <div class="app-chrome-sub">NEURAL-ADAPTIVE PLAYBACK</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="adapt-tag" id="music-adapt-tag">WAITING FOR SIGNAL</div>
+          <button class="back-btn" onclick="navigate('launcher')">← HOME</button>
+        </div>
+      </div>
+      <div id="music-body">
+        <div class="album-art" id="album-art">🎵</div>
+        <div class="track-info">
+          <div class="track-name" id="track-name">Select a mood</div>
+          <div class="track-artist" id="track-artist">EEG-Adaptive Queue</div>
+        </div>
+        <div class="progress-row">
+          <div class="progress-track" onclick="seekMusic(event)">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-times">
+            <span id="time-cur">0:00</span>
+            <span id="time-tot">0:00</span>
+          </div>
+        </div>
+        <div class="music-controls">
+          <button class="music-btn" onclick="prevTrack()">⏮</button>
+          <button class="music-btn" onclick="shuffleTrack()">⇄</button>
+          <button class="music-btn play-btn" id="play-btn" onclick="musicToggle()">▶</button>
+          <button class="music-btn" onclick="nextTrack()">⏭</button>
+          <button class="music-btn" onclick="repeatToggle()" id="repeat-btn">↻</button>
+        </div>
+        <div id="music-eeg-label">Neural queue: waiting for signal…</div>
+      </div>
+    </div>
+
+  </div><!-- /main-area -->
+
+  <!-- ── SIDEBAR ── -->
+  <div id="sidebar">
+    <div id="sidebar-inner">
+
+      <!-- Neural State -->
+      <div class="sidebar-section">
+        <div class="sidebar-label">Neural State</div>
+        <div id="warmup-row">
+          <div class="pulse-dot"></div>
+          <span id="warmup-text">Calibrating…</span>
+        </div>
+        <div class="state-bar-row">
+          <div class="state-bar-name">Attention</div>
+          <div class="state-bar-track"><div class="state-bar-fill sbf-attention" id="sb-attn" style="width:50%"></div></div>
+          <div class="state-bar-val" id="sv-attn">50%</div>
+        </div>
+        <div class="state-bar-row">
+          <div class="state-bar-name">Load</div>
+          <div class="state-bar-track"><div class="state-bar-fill sbf-load" id="sb-load" style="width:50%"></div></div>
+          <div class="state-bar-val" id="sv-load">50%</div>
+        </div>
+        <div class="state-bar-row">
+          <div class="state-bar-name">Tension</div>
+          <div class="state-bar-track"><div class="state-bar-fill sbf-tension" id="sb-tens" style="width:50%"></div></div>
+          <div class="state-bar-val" id="sv-tens">50%</div>
+        </div>
+        <div class="state-bar-row">
+          <div class="state-bar-name">Drowsy</div>
+          <div class="state-bar-track"><div class="state-bar-fill sbf-drowsy" id="sb-drws" style="width:50%"></div></div>
+          <div class="state-bar-val" id="sv-drws">50%</div>
+        </div>
+        <div class="conf-row">
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-size:9px;letter-spacing:1px;color:var(--text-mute)">CONFIDENCE</span>
+            <span style="font-size:9px;color:var(--text-mute)" id="sv-conf">0%</span>
+          </div>
+          <div class="conf-track"><div class="conf-fill" id="sb-conf" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- AI Insight -->
+      <div class="sidebar-section">
+        <div class="sidebar-label">AI Insight</div>
+        <div id="llm-area">
+          <div id="llm-tag">◆ GEMINI</div>
+          <div id="llm-text" style="color:var(--text-mute);font-size:10px;">Waiting for high-load trigger…</div>
+        </div>
+        <button id="llm-btn" onclick="triggerLLM()">⚡ REQUEST INSIGHT</button>
+      </div>
+
+      <!-- Events -->
+      <div class="sidebar-section">
+        <div class="sidebar-label">Events</div>
+        <div id="events-log">
+          <div class="event-chip">System ready — monitoring active</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- ══════════════════ OVERLAYS ══════════════════ -->
+<div id="drowsy-banner">
+  😴 Drowsiness detected — consider a short break
+  <button id="drowsy-dismiss" onclick="dismissDrowsy()">DISMISS</button>
+</div>
+
+<div id="emergency-overlay">
+  <div class="emerg-card">
+    <div class="emerg-icon">🚨</div>
+    <div class="emerg-title">ALERT</div>
+    <div class="emerg-sub">Tension spike + attention collapse detected.<br>Are you okay?</div>
+    <div class="emerg-countdown" id="emerg-countdown">10</div>
+    <div class="emerg-btns">
+      <button class="emerg-btn ok" onclick="dismissEmergency()">I AM OKAY</button>
+      <button class="emerg-btn call" onclick="callForHelp()" id="btn-call">CALL FOR HELP</button>
+    </div>
+  </div>
+</div>
+
+<div id="emerg-step"></div>
+
+<!-- ══════════════════ JAVASCRIPT ══════════════════ -->
+<script>
+'use strict';
+
+/* ── Config ──────────────────────────────────────────── */
+const WS_URL      = 'ws://localhost:8000/ws';
+const API_BASE    = 'http://localhost:8000';
+const WARMUP_WIN  = 30;
+
+/* ── State ───────────────────────────────────────────── */
+let ws            = null;
+let reconnectTimer= null;
+let warmupDone    = false;
+let currentScreen = 'launcher';
+let currentTheme  = 'NEUTRAL';
+let lastState     = { attention:0.5, load:0.5, tension:0.5, drowsiness:0.5, confidence:0 };
+let emergTimer    = null;
+let emergCountdown= 10;
+
+/* ── Clock ───────────────────────────────────────────── */
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ══════════════════════════════════════════════════════
+   NAVIGATION
+   ══════════════════════════════════════════════════════ */
+function navigate(screen) {
+  // deactivate current
+  const prev = document.getElementById('screen-' + currentScreen);
+  if (prev) { prev.classList.remove('active'); }
+
+  // activate new
+  const next = document.getElementById('screen-' + screen);
+  if (next) {
+    next.classList.add('active');
+    currentScreen = screen;
+  }
+
+  // update home button visibility
+  document.getElementById('home-btn').style.display =
+    screen === 'launcher' ? 'none' : '';
+}
+
+// Hide home btn on launcher at start
+navigate('launcher');
+
+/* ══════════════════════════════════════════════════════
+   THEME
+   ══════════════════════════════════════════════════════ */
+function applyTheme(theme) {
+  if (theme === currentTheme) return;
+  currentTheme = theme;
+
+  document.body.classList.remove('theme-high-contrast', 'theme-warm-dim');
+  if (theme === 'HIGH_CONTRAST') document.body.classList.add('theme-high-contrast');
+  if (theme === 'WARM_DIM')      document.body.classList.add('theme-warm-dim');
+
+  document.getElementById('theme-badge').textContent = theme;
+
+  // Trigger adapt-tag flash in current app
+  const tags = document.querySelectorAll('.adapt-tag');
+  tags.forEach(t => {
+    t.textContent = 'EEG ADAPTED';
+    t.classList.add('changed');
+    setTimeout(() => t.classList.remove('changed'), 2000);
+  });
+
+  // Update adaptation notice on launcher
+  const notice = document.getElementById('adaptation-notice');
+  const msgs = {
+    'NEUTRAL':       'EEG-ADAPTIVE MODE: Neutral — interface at standard settings',
+    'HIGH_CONTRAST': 'EEG-ADAPTIVE MODE: High Cognitive Load — High contrast, larger text',
+    'WARM_DIM':      'EEG-ADAPTIVE MODE: Low Arousal / Drowsy — Warm tones, reduced stimulation',
+  };
+  notice.textContent = msgs[theme] || msgs['NEUTRAL'];
+  notice.classList.toggle('active-notice', theme !== 'NEUTRAL');
+
+  // Update EEG hints per app
+  updateAppHints(lastState);
+
+  logEvent(`Theme: ${theme}`, 'info');
+}
+
+/* ══════════════════════════════════════════════════════
+   STATE DISPLAY
+   ══════════════════════════════════════════════════════ */
+function updateStateDisplay(state) {
+  lastState = state;
+
+  const pct = v => Math.round((v || 0) * 100);
+  const w   = v => ((v || 0) * 100).toFixed(0) + '%';
+
+  // Topbar pills
+  document.getElementById('pill-attn').style.width = w(state.attention);
+  document.getElementById('pill-load').style.width = w(state.load);
+  document.getElementById('pill-tens').style.width = w(state.tension);
+  document.getElementById('pill-drws').style.width = w(state.drowsiness);
+
+  // Sidebar bars
+  document.getElementById('sb-attn').style.width = w(state.attention);
+  document.getElementById('sv-attn').textContent = pct(state.attention) + '%';
+  document.getElementById('sb-load').style.width = w(state.load);
+  document.getElementById('sv-load').textContent = pct(state.load) + '%';
+  document.getElementById('sb-tens').style.width = w(state.tension);
+  document.getElementById('sv-tens').textContent = pct(state.tension) + '%';
+  document.getElementById('sb-drws').style.width = w(state.drowsiness);
+  document.getElementById('sv-drws').textContent = pct(state.drowsiness) + '%';
+  document.getElementById('sb-conf').style.width = w(state.confidence);
+  document.getElementById('sv-conf').textContent = pct(state.confidence) + '%';
+
+  updateAppHints(state);
+}
+
+/* ══════════════════════════════════════════════════════
+   PER-APP EEG ADAPTATIONS
+   ══════════════════════════════════════════════════════ */
+function updateAppHints(state) {
+  const load   = state.load    || 0.5;
+  const drowsy = state.drowsiness || 0.5;
+  const attn   = state.attention  || 0.5;
+
+  // ── Focus Timer: adapt suggested session length ────────
+  const focusHint = document.getElementById('focus-eeg-hint');
+  const focusAdapt = document.getElementById('focus-adapt-tag');
+  if (drowsy > 0.65) {
+    focusHint.textContent = '😴 Drowsiness high — 5 min micro-session recommended';
+    focusHint.className = 'focus-eeg-hint drowsy-warn';
+    focusAdapt.textContent = 'SHORTENED SESSION';
+    timerDuration = 5 * 60;
+  } else if (load > 0.70) {
+    focusHint.textContent = '⚡ High load detected — take a 5 min break now';
+    focusHint.className = 'focus-eeg-hint urgent';
+    focusAdapt.textContent = 'BREAK RECOMMENDED';
+  } else if (attn > 0.65) {
+    focusHint.textContent = '✓ High focus — extending to 35 min deep work session';
+    focusHint.className = 'focus-eeg-hint';
+    focusAdapt.textContent = 'EXTENDED SESSION';
+    if (!timerRunning) timerDuration = 35 * 60;
+  } else {
+    focusHint.textContent = '○ Neutral state — standard 25 min Pomodoro session';
+    focusHint.className = 'focus-eeg-hint';
+    focusAdapt.textContent = 'STANDARD SESSION';
+    if (!timerRunning) timerDuration = 25 * 60;
+  }
+
+  // ── Ambient: suggest sound based on state ─────────────
+  const ambLabel = document.getElementById('ambient-eeg-label');
+  if (drowsy > 0.60) {
+    ambLabel.textContent = '⚡ Drowsiness detected — try White Noise or Café to maintain alertness';
+  } else if (load > 0.70) {
+    ambLabel.textContent = '🌊 High load — Rain or Ocean may ease cognitive pressure';
+  } else if (attn > 0.65) {
+    ambLabel.textContent = '🌲 High focus — Forest or Space ambience suits your state';
+  } else {
+    ambLabel.textContent = '✦ Neutral state — any soundscape works for you';
+  }
+
+  // ── Music: update queue description ───────────────────
+  const musLabel = document.getElementById('music-eeg-label');
+  if (drowsy > 0.60) {
+    musLabel.textContent = 'Neural queue: Upbeat / High BPM — counter drowsiness';
+    musLabel.className = 'changed';
+    updateTrackForState('energetic');
+  } else if (load > 0.70) {
+    musLabel.textContent = 'Neural queue: Lo-fi Chill — reduce cognitive pressure';
+    musLabel.className = 'changed';
+    updateTrackForState('chill');
+  } else {
+    musLabel.textContent = 'Neural queue: Balanced — standard listening';
+    musLabel.className = '';
+    updateTrackForState('balanced');
+  }
+
+  // ── Tasks: dim done column on high load ───────────────
+  const colDone = document.getElementById('col-done');
+  if (colDone) {
+    colDone.style.opacity = load > 0.70 ? '0.35' : '1';
+    document.getElementById('tasks-adapt-tag').textContent =
+      load > 0.70 ? 'HIGH LOAD — FOCUS MODE' : 'STANDARD MODE';
+  }
+
+  // ── Notes: font size feedback ─────────────────────────
+  const notesStatus = document.getElementById('notes-status');
+  if (notesStatus) {
+    if (load > 0.70) notesStatus.textContent = 'EEG: High load — larger text, higher contrast';
+    else if (drowsy > 0.60) notesStatus.textContent = 'EEG: Drowsiness — warm tones, reduced strain';
+    else notesStatus.textContent = 'EEG: Neutral — standard editor mode';
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   FOCUS TIMER
+   ══════════════════════════════════════════════════════ */
+const CIRCUMFERENCE = 2 * Math.PI * 96; // r=96
+
+let timerDuration  = 25 * 60;  // seconds — updated by EEG
+let timerRemaining = 25 * 60;
+let timerRunning   = false;
+let timerInterval  = null;
+let timerPhase     = 'FOCUS'; // FOCUS | BREAK
+let breakDuration  = 5 * 60;
+
+function timerToggle() {
+  if (timerRunning) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    document.getElementById('timer-start-btn').textContent = 'RESUME';
+  } else {
+    timerRunning = true;
+    document.getElementById('timer-start-btn').textContent = 'PAUSE';
+    timerInterval = setInterval(timerTick, 1000);
+  }
+}
+
+function timerTick() {
+  if (timerRemaining <= 0) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    if (timerPhase === 'FOCUS') {
+      timerPhase = 'BREAK';
+      timerRemaining = breakDuration;
+      document.getElementById('timer-phase').textContent = 'BREAK';
+      document.getElementById('timer-start-btn').textContent = 'START';
+      logEvent('Focus session complete — break time', 'info');
+    } else {
+      timerPhase = 'FOCUS';
+      timerRemaining = timerDuration;
+      document.getElementById('timer-phase').textContent = 'FOCUS';
+      document.getElementById('timer-start-btn').textContent = 'START';
+    }
+  } else {
+    timerRemaining--;
+  }
+  renderTimer();
+}
+
+function timerReset() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  timerPhase = 'FOCUS';
+  timerRemaining = timerDuration;
+  document.getElementById('timer-start-btn').textContent = 'START';
+  document.getElementById('timer-phase').textContent = 'FOCUS';
+  renderTimer();
+}
+
+function timerSkip() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  timerRemaining = 0;
+  timerTick();
+}
+
+function renderTimer() {
+  const total = timerPhase === 'FOCUS' ? timerDuration : breakDuration;
+  const frac  = timerRemaining / total;
+  const offset = CIRCUMFERENCE * (1 - frac);
+  document.getElementById('timer-ring').style.strokeDashoffset = offset;
+
+  const m = Math.floor(timerRemaining / 60);
+  const s = timerRemaining % 60;
+  document.getElementById('timer-display').textContent =
+    String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+renderTimer();
+
+/* ══════════════════════════════════════════════════════
+   NOTES APP
+   ══════════════════════════════════════════════════════ */
+let notes       = [{ id: 1, title: 'Welcome', body: 'This is an EEG-adaptive notepad.\n\nFont size and contrast change with your cognitive load.' }];
+let activeNote  = 1;
+let noteCounter = 2;
+
+function renderNoteList() {
+  const list = document.getElementById('notes-list');
+  // Keep the + button
+  const existing = list.querySelectorAll('.note-item');
+  existing.forEach(el => el.remove());
+
+  notes.forEach(n => {
+    const div = document.createElement('div');
+    div.className = 'note-item' + (n.id === activeNote ? ' active' : '');
+    div.innerHTML = `<div class="note-item-title">${n.title || 'Untitled'}</div>
+                     <div class="note-item-preview">${(n.body || '').slice(0,40)}</div>`;
+    div.onclick = () => loadNote(n.id);
+    list.appendChild(div);
+  });
+}
+
+function loadNote(id) {
+  activeNote = id;
+  const n = notes.find(n => n.id === id);
+  if (!n) return;
+  document.getElementById('note-title-input').value = n.title || '';
+  document.getElementById('note-body-input').value  = n.body  || '';
+  renderNoteList();
+}
+
+function saveNote() {
+  const n = notes.find(n => n.id === activeNote);
+  if (!n) return;
+  n.title = document.getElementById('note-title-input').value;
+  n.body  = document.getElementById('note-body-input').value;
+  renderNoteList();
+}
+
+function newNote() {
+  const n = { id: noteCounter++, title: '', body: '' };
+  notes.unshift(n);
+  loadNote(n.id);
+}
+
+renderNoteList();
+loadNote(1);
+
+/* ══════════════════════════════════════════════════════
+   AMBIENT APP
+   ══════════════════════════════════════════════════════ */
+let playingSound = null;
+
+function toggleSound(name) {
+  const cards = document.querySelectorAll('.sound-card');
+  cards.forEach(c => c.classList.remove('playing'));
+
+  if (playingSound === name) {
+    playingSound = null;
+  } else {
+    playingSound = name;
+    const card = document.querySelector(`[data-sound="${name}"]`);
+    if (card) card.classList.add('playing');
+  }
+
+  document.getElementById('ambient-adapt-tag').textContent =
+    playingSound ? `PLAYING: ${playingSound.toUpperCase()}` : 'NONE PLAYING';
+}
+
+document.getElementById('vol-slider').addEventListener('input', function() {
+  document.getElementById('vol-val').textContent = this.value + '%';
+});
+
+/* ══════════════════════════════════════════════════════
+   TASK BOARD
+   ══════════════════════════════════════════════════════ */
+const taskDB = {
+  todo:  [
+    { title: 'Review project specs', priority: 'high' },
+    { title: 'Set up dev environment', priority: 'med' },
+    { title: 'Write unit tests', priority: 'low' },
+  ],
+  doing: [
+    { title: 'Build EEG pipeline', priority: 'high' },
+    { title: 'Tune feature extractor', priority: 'med' },
+  ],
+  done:  [
+    { title: 'LSL stream validation', priority: 'low' },
+    { title: 'Signal router tests', priority: 'low' },
+  ],
+};
+
+function renderTasks() {
+  ['todo','doing','done'].forEach(col => {
+    const list = document.getElementById('list-' + col);
+    list.innerHTML = '';
+    taskDB[col].forEach((t, i) => {
+      const div = document.createElement('div');
+      div.className = 'task-card';
+      div.innerHTML = `<div class="task-title">${t.title}</div>
+                       <div class="task-meta">
+                         <span class="task-tag ${t.priority}">${t.priority.toUpperCase()}</span>
+                       </div>`;
+      div.onclick = () => advanceTask(col, i);
+      list.appendChild(div);
+    });
+    document.getElementById('count-' + col).textContent = taskDB[col].length;
+  });
+}
+
+function advanceTask(col, idx) {
+  const next = { todo: 'doing', doing: 'done', done: 'todo' };
+  const task = taskDB[col].splice(idx, 1)[0];
+  taskDB[next[col]].unshift(task);
+  renderTasks();
+}
+
+function addTask(col) {
+  const title = prompt('Task name:');
+  if (!title) return;
+  const priorities = ['high','med','low'];
+  taskDB[col].unshift({ title, priority: priorities[Math.floor(Math.random()*3)] });
+  renderTasks();
+}
+
+renderTasks();
+
+/* ══════════════════════════════════════════════════════
+   MUSIC PLAYER
+   ══════════════════════════════════════════════════════ */
+const TRACKS = {
+  energetic: [
+    { name: 'Dawn Rush',       artist: 'Neural Beats',  emoji: '⚡', dur: 213 },
+    { name: 'Surge Protocol',  artist: 'BrainSync',     emoji: '🔆', dur: 188 },
+    { name: 'Alert State',     artist: 'Uplink',        emoji: '🚀', dur: 201 },
+  ],
+  chill: [
+    { name: 'Lo-fi Cortex',   artist: 'Delta Wave',    emoji: '🌙', dur: 247 },
+    { name: 'Theta Rest',     artist: 'Mind Drift',    emoji: '🌊', dur: 312 },
+    { name: 'Soft Focus',     artist: 'Alpha Room',    emoji: '🌿', dur: 286 },
+  ],
+  balanced: [
+    { name: 'Neutral Ground', artist: 'EEG Ensemble',  emoji: '🎵', dur: 224 },
+    { name: 'Mid-Band',       artist: 'Frequencies',   emoji: '🎶', dur: 198 },
+    { name: 'Steady State',   artist: 'Baseline Co.',  emoji: '🎼', dur: 231 },
+  ],
+};
+
+let musicMode    = 'balanced';
+let trackIdx     = 0;
+let musicPlaying = false;
+let musicProgress= 0;
+let musicInterval= null;
+let musicRepeat  = false;
+let currentTrack = TRACKS.balanced[0];
+
+function updateTrackForState(mode) {
+  if (mode === musicMode) return;
+  musicMode = mode;
+  trackIdx  = 0;
+  if (!musicPlaying) loadTrack(TRACKS[mode][0]);
+}
+
+function loadTrack(track) {
+  currentTrack = track;
+  musicProgress = 0;
+  document.getElementById('album-art').textContent   = track.emoji;
+  document.getElementById('track-name').textContent  = track.name;
+  document.getElementById('track-artist').textContent= track.artist;
+  document.getElementById('time-tot').textContent    = fmtTime(track.dur);
+  document.getElementById('time-cur').textContent    = '0:00';
+  document.getElementById('progress-fill').style.width = '0%';
+}
+
+function musicToggle() {
+  if (musicPlaying) {
+    clearInterval(musicInterval);
+    musicPlaying = false;
+    document.getElementById('play-btn').textContent = '▶';
+  } else {
+    musicPlaying = true;
+    document.getElementById('play-btn').textContent = '⏸';
+    musicInterval = setInterval(() => {
+      musicProgress++;
+      if (musicProgress >= currentTrack.dur) {
+        if (musicRepeat) { musicProgress = 0; }
+        else { nextTrack(); return; }
+      }
+      const pct = (musicProgress / currentTrack.dur) * 100;
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('time-cur').textContent = fmtTime(musicProgress);
+    }, 1000);
+  }
+}
+
+function nextTrack() {
+  trackIdx = (trackIdx + 1) % TRACKS[musicMode].length;
+  loadTrack(TRACKS[musicMode][trackIdx]);
+  if (musicPlaying) { clearInterval(musicInterval); musicPlaying = false; musicToggle(); }
+}
+
+function prevTrack() {
+  if (musicProgress > 3) { musicProgress = 0; return; }
+  trackIdx = (trackIdx - 1 + TRACKS[musicMode].length) % TRACKS[musicMode].length;
+  loadTrack(TRACKS[musicMode][trackIdx]);
+}
+
+function shuffleTrack() {
+  trackIdx = Math.floor(Math.random() * TRACKS[musicMode].length);
+  loadTrack(TRACKS[musicMode][trackIdx]);
+}
+
+function repeatToggle() {
+  musicRepeat = !musicRepeat;
+  document.getElementById('repeat-btn').style.color = musicRepeat ? 'var(--accent)' : '';
+}
+
+function seekMusic(e) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct  = (e.clientX - rect.left) / rect.width;
+  musicProgress = Math.floor(pct * currentTrack.dur);
+  document.getElementById('progress-fill').style.width = (pct*100) + '%';
+  document.getElementById('time-cur').textContent = fmtTime(musicProgress);
+}
+
+function fmtTime(s) {
+  return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+}
+
+loadTrack(currentTrack);
+
+/* ══════════════════════════════════════════════════════
+   EVENTS LOG
+   ══════════════════════════════════════════════════════ */
+function logEvent(msg, type='info') {
+  const log  = document.getElementById('events-log');
+  const chip = document.createElement('div');
+  chip.className = 'event-chip' + (type==='alert'?' alert':(type==='warn'?' warn':''));
+  chip.textContent = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + ' ' + msg;
+  log.insertBefore(chip, log.firstChild);
+  while (log.children.length > 12) log.removeChild(log.lastChild);
+}
+
+/* ══════════════════════════════════════════════════════
+   OVERLAYS: DROWSY / EMERGENCY
+   ══════════════════════════════════════════════════════ */
+function dismissDrowsy() {
+  document.getElementById('drowsy-banner').classList.remove('visible');
+}
+
+function showEmergency() {
+  document.getElementById('emergency-overlay').classList.add('visible');
+  emergCountdown = 10;
+  document.getElementById('emerg-countdown').textContent = emergCountdown;
+  emergTimer = setInterval(() => {
+    emergCountdown--;
+    document.getElementById('emerg-countdown').textContent = emergCountdown;
+    if (emergCountdown <= 0) { clearInterval(emergTimer); document.getElementById('emerg-countdown').textContent = '!'; }
+  }, 1000);
+}
+
+function dismissEmergency() {
+  document.getElementById('emergency-overlay').classList.remove('visible');
+  if (emergTimer) { clearInterval(emergTimer); emergTimer = null; }
+  fetch(API_BASE + '/api/dismiss', { method:'POST' }).catch(()=>{});
+}
+
+function callForHelp() {
+  const btn = document.getElementById('btn-call');
+  btn.textContent = 'ALERTING…';
+  btn.disabled = true;
+  setTimeout(dismissEmergency, 2000);
+}
+
+function showStep(msg) {
+  const el = document.getElementById('emerg-step');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function hideStep() { document.getElementById('emerg-step').classList.remove('visible'); }
+
+/* ══════════════════════════════════════════════════════
+   LLM
+   ══════════════════════════════════════════════════════ */
+function triggerLLM() {
+  fetch(API_BASE + '/api/llm', { method:'POST' }).catch(()=>{});
+  const btn = document.getElementById('llm-btn');
+  btn.textContent = '⏳ REQUESTING…';
+  btn.disabled = true;
+  setTimeout(() => { btn.textContent = '⚡ REQUEST INSIGHT'; btn.disabled = false; }, 5000);
+}
+
+function showLLM(message, timestamp) {
+  const area = document.getElementById('llm-area');
+  const text = document.getElementById('llm-text');
+  text.textContent = message;
+  text.style.color = '';
+  area.classList.add('has-message');
+  logEvent('AI insight received', 'info');
+}
+
+/* ══════════════════════════════════════════════════════
+   WEBSOCKET
+   ══════════════════════════════════════════════════════ */
+function connect() {
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    document.getElementById('ws-dot').classList.add('live');
+    document.getElementById('ws-label').textContent = 'LIVE';
+    document.getElementById('wu-hint').textContent = 'Connected — calibrating baseline…';
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  };
+
+  ws.onmessage = (evt) => {
+    try { handleMessage(JSON.parse(evt.data)); }
+    catch(e) { console.error('Parse error:', e); }
+  };
+
+  ws.onerror = () => {
+    document.getElementById('ws-dot').className = 'ws-dot error';
+    document.getElementById('ws-label').textContent = 'ERROR';
+  };
+
+  ws.onclose = () => {
+    document.getElementById('ws-dot').className = 'ws-dot stale';
+    document.getElementById('ws-label').textContent = 'RECONNECTING…';
+    reconnectTimer = setTimeout(connect, 2000);
+  };
+}
+
+/* ══════════════════════════════════════════════════════
+   MESSAGE HANDLER
+   ══════════════════════════════════════════════════════ */
+function handleMessage(msg) {
+  const state    = msg.state    || {};
+  const features = msg.features || {};
+  const events   = msg.events   || [];
+  const theme    = msg.theme    || 'NEUTRAL';
+  const llm      = msg.llm;
+
+  // Warmup progress
+  const wc = features.window_count || state.window_count || 0;
+  if (!warmupDone) {
+    const pct = Math.min(wc / WARMUP_WIN * 100, 100);
+    document.getElementById('wu-bar').style.width = pct + '%';
+    document.getElementById('wu-hint').textContent = `Calibrating… (${wc}/${WARMUP_WIN} windows)`;
+
+    if (wc >= WARMUP_WIN || state.warmed_up) {
+      warmupDone = true;
+      const ov = document.getElementById('warmup-overlay');
+      ov.classList.add('fade');
+      setTimeout(() => { ov.style.display = 'none'; }, 700);
+      document.getElementById('warmup-row').style.display = 'none';
+      logEvent('Baseline calibrated — neural adaptation active', 'info');
+    }
+    return; // Don't apply state until warmed up — prevents pre-signal theme change
+  }
+
+  // Apply state
+  updateStateDisplay(state);
+
+  // Theme — only apply AFTER warmup
+  applyTheme(theme);
+
+  // LLM message
+  if (llm && llm.message) showLLM(llm.message, llm.timestamp);
+
+  // Events
+  events.forEach(handleEvent);
+}
+
+function handleEvent(ev) {
+  switch(ev.type) {
+    case 'drowsiness_alert':
+      document.getElementById('drowsy-banner').classList.add('visible');
+      logEvent('Drowsiness alert fired', 'warn');
+      break;
+    case 'drowsiness_cleared':
+      document.getElementById('drowsy-banner').classList.remove('visible');
+      logEvent('Drowsiness cleared', 'info');
+      break;
+    case 'emergency_step1':
+      showStep('STEP 1 — TENSION SPIKE DETECTED');
+      logEvent('Emergency step 1 armed', 'alert');
+      break;
+    case 'emergency_step2':
+      showStep('STEP 2 — ATTENTION COLLAPSED');
+      logEvent('Emergency step 2 armed', 'alert');
+      break;
+    case 'emergency_reset':
+      hideStep();
+      break;
+    case 'emergency_alert':
+      hideStep();
+      showEmergency();
+      logEvent('EMERGENCY ALERT FIRED', 'alert');
+      break;
+    case 'llm_response':
+      if (ev.data && ev.data.message) showLLM(ev.data.message, ev.data.timestamp);
+      break;
+    case 'theme_change':
+      logEvent(`Theme → ${ev.data.theme || '?'}`, 'info');
+      break;
+  }
+}
+
+/* ── Keepalive ───────────────────────────────────────── */
+setInterval(() => {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send('ping');
+}, 5000);
+
+/* ── Boot ────────────────────────────────────────────── */
+connect();
+</script>
+</body>
+</html>
