@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pylsl
+PyQt6
+pyqtgraph
+numpy
+scipy
+httpx
+tensorflow
+uiautomation
+pyautogui
